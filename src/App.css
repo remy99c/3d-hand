@@ -1,0 +1,264 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+
+:root {
+  --accent: #ffffff;
+  --bg: #0a0a0a;
+  --glass: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: white;
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background-color: #0a0a0a;
+}
+
+.overlay-header {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.overlay-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #fff 0%, #888 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.overlay-header p {
+  margin: 5px 0 0;
+  font-size: 1rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.overlay-footer {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.overlay-footer p {
+  color: #444;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 20px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ui-container {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+h1 {
+  font-size: 3.5rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #fff 0%, #888 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+p {
+  font-size: 1rem;
+  font-weight: 300;
+  opacity: 0.5;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+}
+
+.instructions {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Webcam Styles */
+.webcam-container {
+  position: absolute;
+  bottom: 40px;
+  right: 40px;
+  z-index: 20;
+}
+
+.webcam-toggle-btn {
+  pointer-events: auto;
+  padding: 14px 28px;
+  background: white;
+  color: black;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.webcam-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(255,255,255,0.1);
+  background: #eee;
+}
+
+.webcam-pip {
+  position: relative;
+  width: 240px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 8px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  animation: slideIn 0.5s ease;
+  pointer-events: auto;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden; /* Clip the 1px persistent video */
+}
+
+.webcam-pip.minimized {
+  width: auto;
+  min-width: 120px;
+  border-radius: 100px;
+  padding: 6px 14px;
+}
+
+@media (max-width: 600px) {
+  .webcam-container {
+    bottom: 20px;
+    right: 20px;
+  }
+  .webcam-pip {
+    width: 180px;
+  }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.webcam-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 4px 6px 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.minimized .webcam-header {
+  padding: 0;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: #00ff88;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #00ff88;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: white;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.action-btn:hover {
+  background: rgba(255,255,255,0.1);
+  transform: scale(1.1);
+}
+
+.action-btn.close:hover {
+  background: rgba(255, 50, 50, 0.2);
+  border-color: rgba(255, 50, 50, 0.3);
+}
+
+.webcam-video {
+  width: 100%;
+  border-radius: 12px;
+  display: block;
+}
+
+.webcam-status {
+  padding-top: 8px;
+  font-size: 0.65rem;
+  text-align: center;
+  opacity: 0.4;
+  letter-spacing: 0.02em;
+}
