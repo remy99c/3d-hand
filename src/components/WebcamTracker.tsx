@@ -9,6 +9,7 @@ if (typeof window !== 'undefined') {
 
 export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boolean) => void }) {
   const webcamRef = useRef<Webcam>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -36,6 +37,65 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
     initDetection()
   }, [])
 
+  const drawOverlay = (landmarks: any[][]) => {
+    const canvas = canvasRef.current
+    if (!canvas || !webcamRef.current?.video) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const video = webcamRef.current.video
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    if (!landmarks || landmarks.length === 0) return
+
+    const points = landmarks[0]
+    
+    // Draw stylized dots for key points
+    ctx.fillStyle = '#00ff88'
+    ctx.shadowBlur = 10
+    ctx.shadowColor = '#00ff88'
+    
+    // Just draw some key pose points for a "scanning" look
+    const keyIndices = [0, 11, 12, 13, 14, 15, 16, 23, 24] // nose, shoulders, elbows, wrists, hips
+    
+    keyIndices.forEach(idx => {
+      const p = points[idx]
+      if (p.visibility > 0.5) {
+        ctx.beginPath()
+        ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    })
+
+    // Draw stylized head target
+    const nose = points[0]
+    if (nose.visibility > 0.8) {
+      const nx = nose.x * canvas.width
+      const ny = nose.y * canvas.height
+      
+      ctx.strokeStyle = '#00ff88'
+      ctx.lineWidth = 2
+      ctx.setLineDash([5, 10])
+      
+      ctx.beginPath()
+      ctx.arc(nx, ny, 40, 0, Math.PI * 2)
+      ctx.stroke()
+      
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.moveTo(nx - 10, ny)
+      ctx.lineTo(nx + 10, ny)
+      ctx.moveTo(nx, ny - 10)
+      ctx.lineTo(nx, ny + 10)
+      ctx.stroke()
+    }
+  }
+
   useEffect(() => {
     let animationFrameId: number
 
@@ -59,6 +119,7 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
           const results = await poseLandmarker.current.detectForVideo(video, startTimeMs)
 
           if (results.landmarks && results.landmarks.length > 0) {
+            drawOverlay(results.landmarks)
             const nose = results.landmarks[0][0] // Nose is landmark 0
             
             // Map 0-1 range to roughly -5 to 5 for Three.js world space
@@ -76,6 +137,11 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
               }
             }
           } else {
+            const canvas = canvasRef.current
+            if (canvas) {
+              const ctx = canvas.getContext('2d')
+              ctx?.clearRect(0, 0, canvas.width, canvas.height)
+            }
             if (window !== undefined) {
               (window as any).humanTarget.active = false
             }
@@ -143,7 +209,8 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
             overflow: 'hidden',
             pointerEvents: isMinimized ? 'none' : 'auto',
             transition: 'opacity 0.3s ease, height 0.3s ease',
-            background: '#000'
+            background: '#000',
+            position: 'relative'
           }}>
             <Webcam
               ref={webcamRef}
@@ -160,6 +227,19 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
               }}
               onUserMedia={() => console.log("Webcam Stream Active")}
               onUserMediaError={(err) => console.error("Webcam Error:", err)}
+            />
+            <canvas 
+              ref={canvasRef}
+              className="webcam-overlay"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                transform: 'scaleX(-1)', // Mirror the canvas to match Webcam
+                pointerEvents: 'none'
+              }}
             />
             <div className="webcam-status" style={{ display: isMinimized ? 'none' : 'block' }}>
               {isLoaded ? "Scanning for humans..." : "Initializing AI..."}
