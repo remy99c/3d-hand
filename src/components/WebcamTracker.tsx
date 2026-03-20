@@ -65,25 +65,34 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
     if (!allLandmarks || allLandmarks.length === 0) return
 
     allLandmarks.forEach((landmarks, lIdx) => {
-      const isFocused = lIdx === focusedIndex
-      const color = isFocused ? '#ff4444' : '#ff8800' // Red for focused, Orange for others
-      const points = landmarks
+      const isFocused = lIdx === focusedIndex;
+      const color = isFocused ? '#ff4444' : '#ffa500'; // Pure Red vs Pure Orange
+      const points = landmarks;
       
       // Draw stylized dots for key points
-      ctx.fillStyle = color
-      ctx.shadowBlur = isFocused ? 15 : 5
-      ctx.shadowColor = color
+      ctx.fillStyle = color;
       
-      const keyIndices = [0, 11, 12, 13, 14, 15, 16, 23, 24]
+      // Shadows only for the focused human to make them stand out
+      if (isFocused) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = color;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      
+      const keyIndices = [0, 11, 12, 13, 14, 15, 16, 23, 24];
       
       keyIndices.forEach(idx => {
-        const p = points[idx]
+        const p = points[idx];
         if (p && p.visibility > 0.5) {
-          ctx.beginPath()
-          ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath();
+          ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2);
+          ctx.fill();
         }
-      })
+      });
+      
+      // Important: Reset shadows after each person
+      ctx.shadowBlur = 0;
 
       // Draw stylized head target for the focused one
       if (isFocused) {
