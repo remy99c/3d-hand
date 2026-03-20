@@ -82,7 +82,13 @@ body {
   z-index: 10;
 }
 
-h1 {
+.cycling-text-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cycling-header {
   font-size: 3.5rem;
   font-weight: 600;
   margin: 0;
@@ -91,22 +97,52 @@ h1 {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  display: inline-block;
 }
 
-p {
+.cycling-subtext {
   font-size: 1rem;
   font-weight: 300;
   opacity: 0.5;
-  margin-top: 8px;
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.2rem;
+}
+
+.enter {
+  animation: rollInFromTop 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.exit {
+  animation: rollOutToBottom 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes rollInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rollOutToBottom {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
 }
 
 .instructions {
   position: absolute;
   bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 40px;
   padding: 12px 24px;
   background: var(--glass);
   backdrop-filter: blur(10px);
@@ -171,6 +207,10 @@ p {
   .webcam-container {
     bottom: 20px;
     right: 20px;
+  }
+  .instructions {
+    bottom: 20px;
+    left: 20px;
   }
   .webcam-pip {
     width: 180px;
@@ -261,4 +301,135 @@ p {
   text-align: center;
   opacity: 0.4;
   letter-spacing: 0.02em;
+}
+
+/* Intro Popup Styles */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85); /* Dark tinted opacity */
+  backdrop-filter: blur(15px); /* Background blur */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: introFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.intro-popup {
+  position: relative;
+  max-width: 600px;
+  width: 90%;
+  padding: 60px 40px;
+  color: white;
+  text-align: left;
+}
+
+.close-popup {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.3s;
+  padding: 8px;
+  border-radius: 50%;
+}
+
+.close-popup:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+  transform: rotate(90deg);
+}
+
+.intro-header {
+  margin-bottom: 40px;
+}
+
+.intro-title {
+  font-size: 0.9rem;
+  letter-spacing: 0.4rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.intro-text-italic {
+  font-size: 1.5rem;
+  line-height: 1.6;
+  font-style: italic;
+  font-weight: 300;
+  margin-bottom: 40px;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.intro-text-main {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 40px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.intro-footer {
+  margin-bottom: 40px;
+}
+
+.artist-credit {
+  font-size: 0.75rem;
+  letter-spacing: 0.2rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+}
+
+.enter-button {
+  background: none;
+  border: none;
+  color: #ff3c3c; /* Reddish orange like in the mockup */
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.15rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  transition: all 0.3s;
+}
+
+.enter-button span {
+  font-size: 1.2rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enter-button:hover {
+  letter-spacing: 0.2rem;
+}
+
+.enter-button:hover span {
+  transform: translateX(10px);
+}
+
+@keyframes introFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(15px); }
+}
+
+@media (max-width: 600px) {
+  .intro-popup {
+    padding: 40px 20px;
+  }
+  .intro-text-italic {
+    font-size: 1.2rem;
+  }
 }

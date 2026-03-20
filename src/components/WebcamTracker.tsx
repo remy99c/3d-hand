@@ -13,6 +13,9 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [showHighlights, setShowHighlights] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const [humanCount, setHumanCount] = useState(0)
   const poseLandmarker = useRef<PoseLandmarker | null>(null)
 
   useEffect(() => {
@@ -21,23 +24,31 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
 
   useEffect(() => {
     async function initDetection() {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-      )
-      poseLandmarker.current = await PoseLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
-          delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        numPoses: 1
-      })
-      setIsLoaded(true)
+      try {
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm"
+        )
+        poseLandmarker.current = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numPoses: 10, // 10 is enough and more stable than 20
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        })
+        setIsLoaded(true)
+      } catch (err) {
+        console.error("Failed to initialize AI Landmarker:", err)
+        setHasError(true)
+      }
     }
     initDetection()
   }, [])
 
-  const drawOverlay = (landmarks: any[][]) => {
+  const drawOverlay = (allLandmarks: any[][], focusedIndex: number) => {
     const canvas = canvasRef.current
     if (!canvas || !webcamRef.current?.video) return
     const ctx = canvas.getContext('2d')
@@ -51,49 +62,54 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
-    if (!landmarks || landmarks.length === 0) return
+    if (!allLandmarks || allLandmarks.length === 0) return
 
-    const points = landmarks[0]
-    
-    // Draw stylized dots for key points
-    ctx.fillStyle = '#00ff88'
-    ctx.shadowBlur = 10
-    ctx.shadowColor = '#00ff88'
-    
-    // Just draw some key pose points for a "scanning" look
-    const keyIndices = [0, 11, 12, 13, 14, 15, 16, 23, 24] // nose, shoulders, elbows, wrists, hips
-    
-    keyIndices.forEach(idx => {
-      const p = points[idx]
-      if (p.visibility > 0.5) {
-        ctx.beginPath()
-        ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2)
-        ctx.fill()
+    allLandmarks.forEach((landmarks, lIdx) => {
+      const isFocused = lIdx === focusedIndex
+      const color = isFocused ? '#ff4444' : '#ff8800' // Red for focused, Orange for others
+      const points = landmarks
+      
+      // Draw stylized dots for key points
+      ctx.fillStyle = color
+      ctx.shadowBlur = isFocused ? 15 : 5
+      ctx.shadowColor = color
+      
+      const keyIndices = [0, 11, 12, 13, 14, 15, 16, 23, 24]
+      
+      keyIndices.forEach(idx => {
+        const p = points[idx]
+        if (p && p.visibility > 0.5) {
+          ctx.beginPath()
+          ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      })
+
+      // Draw stylized head target for the focused one
+      if (isFocused) {
+        const nose = points[0]
+        if (nose && nose.visibility > 0.8) {
+          const nx = nose.x * canvas.width
+          const ny = nose.y * canvas.height
+          
+          ctx.strokeStyle = color
+          ctx.lineWidth = 2
+          ctx.setLineDash([5, 10])
+          
+          ctx.beginPath()
+          ctx.arc(nx, ny, 40, 0, Math.PI * 2)
+          ctx.stroke()
+          
+          ctx.setLineDash([])
+          ctx.beginPath()
+          ctx.moveTo(nx - 10, ny)
+          ctx.lineTo(nx + 10, ny)
+          ctx.moveTo(nx, ny - 10)
+          ctx.lineTo(nx, ny + 10)
+          ctx.stroke()
+        }
       }
     })
-
-    // Draw stylized head target
-    const nose = points[0]
-    if (nose.visibility > 0.8) {
-      const nx = nose.x * canvas.width
-      const ny = nose.y * canvas.height
-      
-      ctx.strokeStyle = '#00ff88'
-      ctx.lineWidth = 2
-      ctx.setLineDash([5, 10])
-      
-      ctx.beginPath()
-      ctx.arc(nx, ny, 40, 0, Math.PI * 2)
-      ctx.stroke()
-      
-      ctx.setLineDash([])
-      ctx.beginPath()
-      ctx.moveTo(nx - 10, ny)
-      ctx.lineTo(nx + 10, ny)
-      ctx.moveTo(nx, ny - 10)
-      ctx.lineTo(nx, ny + 10)
-      ctx.stroke()
-    }
   }
 
   useEffect(() => {
@@ -119,32 +135,60 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
           const results = await poseLandmarker.current.detectForVideo(video, startTimeMs)
 
           if (results.landmarks && results.landmarks.length > 0) {
-            drawOverlay(results.landmarks)
-            const nose = results.landmarks[0][0] // Nose is landmark 0
+            // Find the closest human (lowest average Z of key points)
+            let focusedIdx = 0
+            if (results.landmarks.length > 1) {
+              let minZ = Infinity
+              results.landmarks.forEach((landmarks, idx) => {
+                const nose = landmarks[0]
+                if (nose && nose.z < minZ) {
+                  minZ = nose.z
+                  focusedIdx = idx
+                }
+              })
+            }
+
+            if (showHighlights) {
+              drawOverlay(results.landmarks, focusedIdx)
+            } else {
+              const canvas = canvasRef.current
+              if (canvas) {
+                const ctx = canvas.getContext('2d')
+                ctx?.clearRect(0, 0, canvas.width, canvas.height)
+              }
+            }
+
+            const focusedPerson = results.landmarks[focusedIdx]
+            const nose = focusedPerson[0]
             
             // Map 0-1 range to roughly -5 to 5 for Three.js world space
             const targetX = (1 - nose.x - 0.5) * 10 
             const targetY = (0.5 - nose.y) * 10
             
+            // Depth/Scale
             const scaleFactor = Math.max(0.4, Math.min(2.0, 1.0 - (nose.z * 2)))
 
-            if (window !== undefined) {
+            if (typeof window !== 'undefined') {
               (window as any).humanTarget = { 
                 x: targetX, 
                 y: targetY, 
                 scale: scaleFactor,
-                active: true 
-              }
+                active: true,
+                count: results.landmarks.length 
+              };
             }
+            setHumanCount(prev => prev !== results.landmarks.length ? results.landmarks.length : prev);
           } else {
             const canvas = canvasRef.current
             if (canvas) {
               const ctx = canvas.getContext('2d')
-              ctx?.clearRect(0, 0, canvas.width, canvas.height)
+              ctx?.clearRect(0, 0, canvas.width, canvas.height);
             }
-            if (window !== undefined) {
-              (window as any).humanTarget.active = false
+            if (typeof window !== 'undefined') {
+              (window as any).humanTarget.active = false;
+              (window as any).humanTarget.count = 0;
             }
+            setHumanCount(prev => prev !== 0 ? 0 : prev);
           }
         }
       }
@@ -158,16 +202,17 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [isOpen, isLoaded])
+  }, [isOpen, isLoaded, showHighlights])
 
   return (
     <div className="webcam-container">
       {!isOpen && (
         <button 
-          className="webcam-toggle-btn"
-          onClick={() => setIsOpen(true)}
+          className={`webcam-toggle-btn ${hasError ? 'error' : ''}`}
+          onClick={() => { if (!hasError) setIsOpen(true); }}
+          style={hasError ? { background: 'rgba(255, 68, 68, 0.2)', color: '#ff4444', borderColor: '#ff4444' } : {}}
         >
-          {isLoaded ? "Activate Human Tracking" : "Loading AI..."}
+          {hasError ? "AI Error - Try Refreshing" : (isLoaded ? "Activate Human Tracking" : "Loading AI Engine...")}
         </button>
       )}
 
@@ -189,6 +234,17 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
                 ) : (
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
                 )}
+              </button>
+              <button 
+                className={`action-btn ${showHighlights ? 'active' : ''}`}
+                onClick={() => setShowHighlights(!showHighlights)}
+                title={showHighlights ? "Hide Highlights" : "Show Highlights"}
+                style={{ color: showHighlights ? '#00ff88' : 'inherit' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
               </button>
               <button 
                 className="action-btn close" 
@@ -242,7 +298,19 @@ export function WebcamTracker({ onStatusChange }: { onStatusChange: (active: boo
               }}
             />
             <div className="webcam-status" style={{ display: isMinimized ? 'none' : 'block' }}>
-              {isLoaded ? "Scanning for humans..." : "Initializing AI..."}
+              {hasError ? (
+                <span style={{ color: '#ff4444' }}>Error loading AI engine. Please refresh.</span>
+              ) : (
+                isLoaded ? (
+                  (humanCount > 0) ? (
+                    <span style={{ color: '#ff4444', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      {humanCount} {humanCount === 1 ? 'HUMAN' : 'HUMANS'} FOUND
+                    </span>
+                  ) : (
+                    "scanning for humans..."
+                  )
+                ) : "Initializing AI..."
+              )}
             </div>
           </div>
         </div>

@@ -2,9 +2,25 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Environment, ContactShadows } from '@react-three/drei'
 import { HandModel } from './components/HandModel'
 import { WebcamTracker } from './components/WebcamTracker'
+import { IntroPopup } from './components/IntroPopup'
 import React from 'react'
 import * as THREE from 'three'
 import './App.css'
+import { CyclingText } from './components/CyclingText'
+
+const textPairs = [
+  { header: "Interact to flip off", subtext: "Activate \"Human tracking\" for autonomouse anger" },
+  { header: "Interactúa para insultar", subtext: "Activar \"Human tracking\" para ira autónoma" },
+  { header: "Interagir pour faire un doigt", subtext: "Activer \"Human tracking\" pour une colère autonome" },
+  { header: "Interagieren, um Mittelfinger zu zeigen", subtext: "\"Human tracking\" für autonomen Zorn aktivieren" },
+  { header: "Interagisci per fare il dito medio", subtext: "Attiva \"Human tracking\" per rabbia autonoma" },
+  { header: "Interagera för att visa fingret", subtext: "Aktivera \"Human tracking\" för autonom ilska" },
+  { header: "Interactie om middelvinger op te steken", subtext: "Activeer \"Human tracking\" voor woede" },
+  { header: "インタラクトして中指を立てる", subtext: "\"Human tracking\" を有効にする" },
+  { header: "互动以竖中指", subtext: "激活 \"Human tracking\"" },
+  { header: "Взаимодействуйте, чтобы послать", subtext: "Активируйте \"Human tracking\"" },
+  { header: "تفاعل لرفع الإصبع الأوسط", subtext: "تفعيل \"Human tracking\"" }
+];
 
 function SceneController({ isTracking }: { isTracking: boolean }) {
   const { camera, controls } = useThree() as any
@@ -29,12 +45,13 @@ function SceneController({ isTracking }: { isTracking: boolean }) {
 
 function App() {
   const [isTracking, setIsTracking] = React.useState(false)
+  const [showIntro, setShowIntro] = React.useState(true)
 
   return (
     <div className="app-container">
+      {showIntro && <IntroPopup onEnter={() => setShowIntro(false)} />}
       <div className="ui-container">
-        <h1>Hand Expression</h1>
-        <p>3D Interactive Tracker</p>
+        {!showIntro && <CyclingText pairs={textPairs} interval={9000} />}
       </div>
 
       <Canvas shadows camera={{ position: [0, 0, 15], fov: 35 }}>
@@ -64,8 +81,8 @@ function App() {
 
       <div className="instructions">
         {isTracking 
-          ? "AI Tracking Active • Move to interact" 
-          : "Rotate to explore • Zoom to inspect • Activate AI for tracking"}
+          ? "AI Tracking Active - Move to interact" 
+          : "Rotate to explore - Zoom to inspect"}
       </div>
 
       <WebcamTracker onStatusChange={setIsTracking} />
